@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "apps": [
+    {
+      "id": "appA",
+      "name": "示例应用A",
+      "version": "1.0.0",
+      "downloadUrl": "https://example.com/apps/appA-1.0.0.zip",
+      "sha256": "0000",
+      "visible": true,
+      "launchArgs": [],
+      "env": {},
+      "wrapperRelativePath": "wrapper/WrapperApp.exe"
+    }
+  ]
+}
+

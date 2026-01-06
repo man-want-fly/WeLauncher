@@ -1,0 +1,14 @@
+<AppInstaller
+    Uri="https://example.com/shell/WeLauncher.appinstaller"
+    xmlns="http://schemas.microsoft.com/appx/appinstaller/2018">
+  <MainPackage
+      Name="WeLauncher"
+      Publisher="CN=Example Co"
+      Version="1.0.0.0"
+      Uri="https://example.com/shell/WeLauncher_1.0.0.0_x64.msix" />
+  <UpdateSettings>
+    <OnLaunch HoursBetweenUpdates="4" />
+    <ForceUpdateFromAnyVersion>false</ForceUpdateFromAnyVersion>
+  </UpdateSettings>
+</AppInstaller>
+
