@@ -1,0 +1,114 @@
+name: Package App Zip From Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_id:
+        description: Application ID
+        required: true
+        type: string
+      version:
+        description: Version (e.g., 1.0.0)
+        required: true
+        type: string
+      name:
+        description: Display name
+        required: true
+        type: string
+      entry_exe:
+        description: Entry executable (e.g., MyApp.exe)
+        required: true
+        type: string
+      args:
+        description: Space-separated args (e.g., --mode=prod --log=info)
+        required: false
+        type: string
+      env_json:
+        description: JSON map for environment variables (e.g., {"APP_ENV":"prod"})
+        required: false
+        type: string
+      base_url:
+        description: Base URL for CDN (e.g., https://cdn.example.com)
+        required: true
+        type: string
+      visible:
+        description: Visible in launcher UI
+        required: true
+        type: boolean
+      release_tag:
+        description: Release tag to download from (e.g., v1.0.0)
+        required: true
+        type: string
+      asset_name:
+        description: Payload zip asset name in the release (e.g., npp-1.0.0-payload.zip)
+        required: true
+        type: string
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Verify gh CLI
+        shell: pwsh
+        run: |
+          gh --version
+
+      - name: Download release asset
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          New-Item -ItemType Directory -Force -Path tmp | Out-Null
+          gh release download '${{ inputs.release_tag }}' -p '${{ inputs.asset_name }}' -R '${{ github.repository }}' -D tmp
+          $asset = Join-Path "tmp" '${{ inputs.asset_name }}'
+          if (-not (Test-Path $asset)) { Write-Error "Asset not found: $asset" }
+
+      - name: Extract payload
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path tmp/payload | Out-Null
+          Expand-Archive -Path (Join-Path "tmp" '${{ inputs.asset_name }}') -DestinationPath tmp/payload -Force
+
+      - name: Package app zip
+        shell: pwsh
+        run: |
+          $argsStr = "${{ inputs.args }}"
+          $argsList = @()
+          if ($argsStr -and $argsStr.Trim().Length -gt 0) { $argsList = $argsStr.Split(" ") }
+          $envJson = '${{ inputs.env_json }}'
+          $env = @{}
+          if ($envJson -and $envJson.Trim().Length -gt 0) {
+            $dict = ConvertFrom-Json $envJson
+            foreach ($p in $dict.psobject.Properties) { $env[$p.Name] = [string]$p.Value }
+          }
+          pwsh tooling/wrappergen/wrapper-make.ps1 `
+            -AppId '${{ inputs.app_id }}' `
+            -Version '${{ inputs.version }}' `
+            -PayloadDir "tmp/payload" `
+            -EntryExe '${{ inputs.entry_exe }}' `
+            -Args $argsList `
+            -Env $env `
+            -Name '${{ inputs.name }}' `
+            -BaseUrl '${{ inputs.base_url }}' `
+            -Visible [bool]::Parse('${{ inputs.visible }}')
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app_id }}-${{ inputs.version }}-zip
+          path: dist/apps/${{ inputs.app_id }}/${{ inputs.version }}/${{ inputs.app_id }}-${{ inputs.version }}.zip
+
+      - name: Upload manifest fragment
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app_id }}-${{ inputs.version }}-manifest-fragment
+          path: dist/manifests/${{ inputs.app_id }}-${{ inputs.version }}.json
+

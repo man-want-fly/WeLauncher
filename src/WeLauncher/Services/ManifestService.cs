@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using WeLauncher.Models;
@@ -13,6 +14,12 @@ namespace WeLauncher.Services
             var json = await File.ReadAllTextAsync(path);
             return JsonSerializer.Deserialize<Manifest>(json);
         }
+
+        public async Task<Manifest?> LoadFromUrlAsync(string url)
+        {
+            using var http = new HttpClient();
+            var json = await http.GetStringAsync(url);
+            return JsonSerializer.Deserialize<Manifest>(json);
+        }
     }
 }
-

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "apps": [
+    {
+      "id": "appA",
+      "name": "示例应用A",
+      "version": "1.0.0",
+      "downloadUrl": "http://localhost:8000/apps/appA/1.0.0/appA-1.0.0.zip",
+      "sha256": "",
+      "visible": true,
+      "launchArgs": ["--mode=prod"],
+      "env": { "APP_ENV": "prod" },
+      "wrapperRelativePath": "wrapper/WrapperApp.exe"
+    }
+  ]
+}
+

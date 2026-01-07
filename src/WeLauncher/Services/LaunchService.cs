@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.IO;
+using System.Text.Json;
+using WeLauncher.Models;
 
 namespace WeLauncher.Services
 {
@@ -15,6 +17,15 @@ namespace WeLauncher.Services
             return guid;
         }
 
+        public void WriteLaunchSpec(string baseDir, LaunchSpec spec, string guid)
+        {
+            var launchDir = Path.Combine(baseDir, "launch");
+            Directory.CreateDirectory(launchDir);
+            var specFile = Path.Combine(launchDir, $"{spec.AppId}-{guid}.json");
+            var json = JsonSerializer.Serialize(spec);
+            File.WriteAllText(specFile, json);
+        }
+
         public Process StartWrapper(string wrapperExe, string appId, string guid, string appDir)
         {
             var psi = new ProcessStartInfo(wrapperExe);
@@ -26,4 +37,3 @@ namespace WeLauncher.Services
         }
     }
 }
-

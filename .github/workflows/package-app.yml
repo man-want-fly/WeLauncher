@@ -1,0 +1,93 @@
+name: Package App Zip
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_id:
+        description: Application ID
+        required: true
+        type: string
+      version:
+        description: Version (e.g., 1.0.0)
+        required: true
+        type: string
+      name:
+        description: Display name
+        required: true
+        type: string
+      entry_exe:
+        description: Entry executable (e.g., MyApp.exe)
+        required: true
+        type: string
+      args:
+        description: Space-separated args (e.g., --mode=prod --log=info)
+        required: false
+        type: string
+      env_json:
+        description: JSON map for environment variables (e.g., {"APP_ENV":"prod"})
+        required: false
+        type: string
+      base_url:
+        description: Base URL for CDN (e.g., https://cdn.example.com)
+        required: true
+        type: string
+      visible:
+        description: Visible in launcher UI
+        required: true
+        type: boolean
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Validate payload directory
+        shell: pwsh
+        run: |
+          $path = "payloads/${{ inputs.app_id }}/${{ inputs.version }}/payload"
+          if (-not (Test-Path $path)) { Write-Error "Payload directory not found: $path" }
+
+      - name: Package app zip
+        shell: pwsh
+        run: |
+          $argsStr = "${{ inputs.args }}"
+          $argsList = @()
+          if ($argsStr -and $argsStr.Trim().Length -gt 0) { $argsList = $argsStr.Split(" ") }
+          $envJson = '${{ inputs.env_json }}'
+          $env = @{}
+          if ($envJson -and $envJson.Trim().Length -gt 0) {
+            $dict = ConvertFrom-Json $envJson
+            foreach ($p in $dict.psobject.Properties) { $env[$p.Name] = [string]$p.Value }
+          }
+          pwsh tooling/wrappergen/wrapper-make.ps1 `
+            -AppId '${{ inputs.app_id }}' `
+            -Version '${{ inputs.version }}' `
+            -PayloadDir "payloads/${{ inputs.app_id }}/${{ inputs.version }}/payload" `
+            -EntryExe '${{ inputs.entry_exe }}' `
+            -Args $argsList `
+            -Env $env `
+            -Name '${{ inputs.name }}' `
+            -BaseUrl '${{ inputs.base_url }}' `
+            -Visible [bool]::Parse('${{ inputs.visible }}')
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app_id }}-${{ inputs.version }}-zip
+          path: dist/apps/${{ inputs.app_id }}/${{ inputs.version }}/${{ inputs.app_id }}-${{ inputs.version }}.zip
+
+      - name: Upload manifest fragment
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app_id }}-${{ inputs.version }}-manifest-fragment
+          path: dist/manifests/${{ inputs.app_id }}-${{ inputs.version }}.json
+
