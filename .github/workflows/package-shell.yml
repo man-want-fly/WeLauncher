@@ -33,7 +33,7 @@ jobs:
         ./tooling/package-shell.ps1 @params
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: WeLauncher
         path: ${{ github.workspace }}\WeLauncher.zip

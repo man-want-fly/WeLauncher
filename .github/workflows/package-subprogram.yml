@@ -30,7 +30,7 @@ jobs:
           -EntryExe "${{ inputs.entry_exe }}"
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.output_name }}
         path: ${{ github.workspace }}\${{ inputs.output_name }}.zip
