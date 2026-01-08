@@ -38,13 +38,13 @@ namespace WeLauncher.ViewModels
             }
             if (m == null)
             {
-                var localPath = Path.Combine(Directory.GetCurrentDirectory(), "manifests", "manifest.sample.json");
+                var localPath = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "manifest.json");
                 try { m = await _manifest.LoadFromFileAsync(localPath); } catch { }
             }
             if (m == null) return;
             foreach (var a in m.Apps)
             {
-                if (a.Visible) Apps.Add(a);
+                Apps.Add(a);
             }
         }
 
@@ -55,15 +55,18 @@ namespace WeLauncher.ViewModels
 
         async Task LaunchAsync(AppDescriptor app)
         {
-            var baseDir = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.CommonApplicationData), "WeLauncher");
+            // Simplified launch logic
             var appDir = _install.GetAppVersionDir(app);
-            var guid = _launch.CreateLaunchToken(baseDir, app.Id);
-            var spec = new LaunchSpec { AppId = app.Id, AppDir = appDir, Args = app.LaunchArgs, Env = app.Env };
-            _launch.WriteLaunchSpec(baseDir, spec, guid);
             var wrapperExe = Path.Combine(appDir, app.WrapperRelativePath);
             try
             {
-                var p = _launch.StartWrapper(wrapperExe, app.Id, guid, appDir);
+                // Just start the wrapper, passing the app directory
+                var p = _launch.StartWrapper(wrapperExe, appDir);
+                // We don't necessarily need to wait for exit here, but we can if we want to block the UI?
+                // The user said "Simple". Usually launcher doesn't block.
+                // But previously it awaited. I'll keep await for now, but wrapper logic is independent.
+                // If I await, the shell UI might freeze if run on UI thread? 
+                // RelayCommand runs async void, so it's fine.
                 await Task.Run(() => p?.WaitForExit());
             }
             catch

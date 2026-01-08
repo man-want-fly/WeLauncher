@@ -1,0 +1,36 @@
+name: Package Subprogram
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_source_path:
+        description: 'Path to app folder (relative to repo root)'
+        required: true
+        default: 'samples/AppA'
+      entry_exe:
+        description: 'Entry Executable Name (optional, e.g. MyApp.exe)'
+        required: false
+      output_name:
+        description: 'Output Zip Name (without extension)'
+        required: true
+        default: 'app-package'
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Package
+      shell: pwsh
+      run: |
+        ./tooling/package-subprogram.ps1 `
+          -SourcePath "${{ github.workspace }}\${{ inputs.app_source_path }}" `
+          -OutputPath "${{ github.workspace }}\${{ inputs.output_name }}.zip" `
+          -EntryExe "${{ inputs.entry_exe }}"
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ inputs.output_name }}
+        path: ${{ github.workspace }}\${{ inputs.output_name }}.zip

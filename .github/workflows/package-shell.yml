@@ -1,0 +1,39 @@
+name: Package Shell
+
+on:
+  workflow_dispatch:
+    inputs:
+      manifest_json:
+        description: 'Content of manifest.json'
+        required: false
+        type: string
+      manifest_path:
+        description: 'Path to manifest.json in repo (if manifest_json is empty)'
+        required: false
+        default: 'manifests/dev.manifest.json'
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Package
+      shell: pwsh
+      run: |
+        $params = @{
+            OutputPath = "${{ github.workspace }}\WeLauncher.zip"
+        }
+        if ("${{ inputs.manifest_json }}" -ne "") {
+            $params['ManifestJson'] = '${{ inputs.manifest_json }}'
+        } elseif ("${{ inputs.manifest_path }}" -ne "") {
+            $params['ManifestPath'] = "${{ github.workspace }}\${{ inputs.manifest_path }}"
+        }
+
+        ./tooling/package-shell.ps1 @params
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: WeLauncher
+        path: ${{ github.workspace }}\WeLauncher.zip

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MinimalWrapper
 {
@@ -10,23 +11,35 @@ namespace MinimalWrapper
     {
         static int Main(string[] args)
         {
-            string appId = "";
-            string token = "";
+            // 1. Check if Shell is running
+            if (!IsShellRunning("WeLauncher")) 
+            {
+                // Optionally show a message box here if it was a Windows GUI app
+                return 1;
+            }
+
             string appDir = "";
             foreach (var a in args)
             {
-                if (a.StartsWith("--appId=")) appId = a.Substring(8);
-                else if (a.StartsWith("--token=")) token = a.Substring(8);
-                else if (a.StartsWith("--appDir=")) appDir = a.Substring(9);
+                if (a.StartsWith("--appDir=")) appDir = a.Substring(9);
             }
-            if (!IsShellRunning("WeLauncher")) return 1;
-            var baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "WeLauncher");
-            if (!VerifyToken(baseDir, appId, token, TimeSpan.FromMinutes(2))) return 2;
-            var spec = ReadLaunchSpec(baseDir, appId, token);
-            var entryExe = ReadEntryExeFromMeta(appDir);
-            var payloadExe = Path.Combine(appDir, "app", entryExe);
-            if (!File.Exists(payloadExe)) return 3;
-            var p = StartPayload(payloadExe, spec.Args, spec.Env);
+
+            // Fallback: assume we are in [AppDir]/wrapper/WrapperApp.exe
+            if (string.IsNullOrEmpty(appDir))
+            {
+                // Get directory of current executable
+                var selfDir = AppDomain.CurrentDomain.BaseDirectory;
+                // appDir is parent of selfDir
+                appDir = Directory.GetParent(selfDir)?.FullName ?? selfDir;
+            }
+
+            var entryExe = ResolveEntryExe(appDir);
+            if (string.IsNullOrEmpty(entryExe) || !File.Exists(entryExe)) 
+            {
+                return 3;
+            }
+
+            var p = StartPayload(entryExe);
             p?.WaitForExit();
             return 0;
         }
@@ -40,71 +53,48 @@ namespace MinimalWrapper
             return false;
         }
 
-        static bool VerifyToken(string baseDir, string appId, string guid, TimeSpan ttl)
-        {
-            var tokenFile = Path.Combine(baseDir, "launch", $"{appId}-{guid}.ok");
-            if (!File.Exists(tokenFile)) return false;
-            var ts = DateTime.Parse(File.ReadAllText(tokenFile), null, System.Globalization.DateTimeStyles.RoundtripKind);
-            var ok = DateTime.UtcNow - ts <= ttl;
-            try { File.Delete(tokenFile); } catch { }
-            return ok;
-        }
-
-        static Process StartPayload(string exePath, List<string> args, Dictionary<string,string> env)
+        static Process? StartPayload(string exePath)
         {
             var psi = new ProcessStartInfo(exePath) { UseShellExecute = false };
-            foreach (var a in args) psi.ArgumentList.Add(a);
-            foreach (var kv in env) psi.Environment[kv.Key] = kv.Value;
+            // Pass through original arguments if needed? 
+            // The user removed LaunchArgs from manifest, so we assume no args needed for now.
+            // Or we could pass through args passed to the wrapper (excluding our own flags).
+            psi.WorkingDirectory = Path.GetDirectoryName(exePath);
             return Process.Start(psi);
         }
 
-        static LaunchSpec ReadLaunchSpec(string baseDir, string appId, string guid)
+        static string ResolveEntryExe(string appDir)
         {
-            var specFile = Path.Combine(baseDir, "launch", $"{appId}-{guid}.json");
-            if (File.Exists(specFile))
-            {
-                var json = File.ReadAllText(specFile);
-                try
-                {
-                    var spec = JsonSerializer.Deserialize<LaunchSpec>(json);
-                    try { File.Delete(specFile); } catch { }
-                    return spec ?? new LaunchSpec();
-                }
-                catch
-                {
-                    return new LaunchSpec();
-                }
-            }
-            return new LaunchSpec();
-        }
-
-        static string ReadEntryExeFromMeta(string appDir)
-        {
+            // 1. Try meta/app.json
             var metaFile = Path.Combine(appDir, "meta", "app.json");
             if (File.Exists(metaFile))
             {
-                var json = File.ReadAllText(metaFile);
                 try
                 {
+                    var json = File.ReadAllText(metaFile);
                     var meta = JsonSerializer.Deserialize<MetaApp>(json);
-                    if (meta != null && !string.IsNullOrWhiteSpace(meta.EntryExe)) return meta.EntryExe;
+                    if (meta != null && !string.IsNullOrWhiteSpace(meta.EntryExe)) 
+                    {
+                        return Path.Combine(appDir, "app", meta.EntryExe);
+                    }
                 }
-                catch
-                {
-                }
+                catch { }
             }
-            return "App.exe";
-        }
-    }
 
-    public class LaunchSpec
-    {
-        public List<string> Args { get; set; } = new List<string>();
-        public Dictionary<string, string> Env { get; set; } = new Dictionary<string, string>();
+            // 2. Scan app/ directory for .exe
+            var appPayloadDir = Path.Combine(appDir, "app");
+            if (Directory.Exists(appPayloadDir))
+            {
+                var exes = Directory.GetFiles(appPayloadDir, "*.exe");
+                if (exes.Length > 0) return exes[0];
+            }
+
+            return "";
+        }
     }
 
     public class MetaApp
     {
-        public string EntryExe { get; set; } = "App.exe";
+        public string EntryExe { get; set; } = "";
     }
 }
