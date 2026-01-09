@@ -8,18 +8,23 @@ namespace WeLauncher.Services
 {
     public class ManifestService
     {
+        private readonly JsonSerializerOptions _options = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
         public async Task<Manifest?> LoadFromFileAsync(string path)
         {
             if (!File.Exists(path)) return null;
             var json = await File.ReadAllTextAsync(path);
-            return JsonSerializer.Deserialize<Manifest>(json);
+            return JsonSerializer.Deserialize<Manifest>(json, _options);
         }
 
         public async Task<Manifest?> LoadFromUrlAsync(string url)
         {
             using var http = new HttpClient();
             var json = await http.GetStringAsync(url);
-            return JsonSerializer.Deserialize<Manifest>(json);
+            return JsonSerializer.Deserialize<Manifest>(json, _options);
         }
     }
 }
