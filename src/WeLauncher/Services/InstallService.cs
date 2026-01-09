@@ -11,7 +11,7 @@ namespace WeLauncher.Services
 
         public string GetBaseDir()
         {
-            return Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.CommonApplicationData), "WeLauncher");
+            return Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "WeLauncher");
         }
 
         public string GetAppVersionDir(AppDescriptor app)

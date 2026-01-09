@@ -7,7 +7,7 @@ namespace WeLauncher.Services
 {
     public class DownloadService
     {
-        public async Task<string> DownloadZipAsync(string url, string destPath, string expectedSha256, System.IProgress<double>? progress = null)
+        public async Task<string> DownloadZipAsync(string url, string destPath, string? expectedSha256, System.IProgress<double>? progress = null)
         {
             using var http = new HttpClient();
             using var resp = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);

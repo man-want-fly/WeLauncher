@@ -6,7 +6,6 @@
       "Name": "npp demo",
       "Version": "1.0.0",
       "DownloadUrl": "https://leo-fam.oss-cn-beijing.aliyuncs.com/lau/apps/npp/1.0.0/npp.zip",
-      "Sha256": "b50a17afc7e2674d01f7772de91451cb4850c88ae69d811a54f8d4b84f7e52e5",
       "WrapperRelativePath": "wrapper/WrapperApp.exe"
     }
   ]

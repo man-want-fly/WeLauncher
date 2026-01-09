@@ -18,7 +18,7 @@ namespace WeLauncher.Models
         public string Name { get; set; } = "";
         public string Version { get; set; } = "";
         public string DownloadUrl { get; set; } = "";
-        public string Sha256 { get; set; } = "";
+        public string? Sha256 { get; set; }
         public string WrapperRelativePath { get; set; } = "";
 
         private AppState _state = AppState.Idle;
