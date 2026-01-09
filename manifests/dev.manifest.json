@@ -2,16 +2,12 @@
   "schemaVersion": 1,
   "apps": [
     {
-      "id": "appA",
-      "name": "示例应用A",
+      "id": "npp",
+      "name": "npp demo",
       "version": "1.0.0",
-      "downloadUrl": "http://localhost:8000/apps/appA/1.0.0/appA-1.0.0.zip",
-      "sha256": "",
-      "visible": true,
-      "launchArgs": ["--mode=prod"],
-      "env": { "APP_ENV": "prod" },
+      "downloadUrl": "https://leo-fam.oss-cn-beijing.aliyuncs.com/lau/apps/npp/1.0.0/npp.zip",
+      "sha256": "b50a17afc7e2674d01f7772de91451cb4850c88ae69d811a54f8d4b84f7e52e5",
       "wrapperRelativePath": "wrapper/WrapperApp.exe"
     }
   ]
 }
-
