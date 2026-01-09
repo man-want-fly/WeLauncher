@@ -1,89 +1,170 @@
 # WeLauncher
 
-WeLauncher 是一个简化的 Windows 原生 Launcher（C# + WPF），专注于核心功能：壳的自我更新、子程序的下载与运行、以及防止外部启动的保护机制。
+WeLauncher 是一个简化的 Windows 原生 Launcher（C# + WPF），核心目标是：**简单、有效、安全**。
 
-## 三大核心功能
+它只做三件事：
+1.  **壳 (Shell)**：管理应用列表，负责自身的更新。
+2.  **分发 (Distribution)**：下载、校验、解压应用包。
+3.  **保护 (Protection)**：通过 Wrapper 确保子程序只能由壳启动。
 
-1.  **壳及壳本身的更新**
-    *   壳（Shell）负责读取配置、展示应用列表。
-    *   壳自身通过 MSIX / AppInstaller 机制或简单的 Zip 替换进行更新。
+---
 
-2.  **下载解压子程序并运行**
-    *   根据 Manifest 下载应用 Zip 包。
-    *   校验 SHA256 并解压到本地。
-    *   通过 Wrapper 启动子程序。
+## 流程全景图 (Workflow)
 
-3.  **Wrapper 防止在壳以外启动**
-    *   每个子程序都配有一个 Wrapper。
-    *   Wrapper 会检查 WeLauncher 是否在运行，防止用户直接运行子程序。
-    *   Wrapper 自动定位并启动真正的应用程序。
+### 1. 开发与打包流程 (Build & Package)
 
-## Manifest 格式
+开发者只需将子程序放入 `apps` 目录，然后通过 GitHub Actions 一键打包。
 
-`manifest.json` 极其精简，去除了不必要的参数：
+```mermaid
+graph TD
+    subgraph Local [本地开发环境]
+        A[apps/MyApp Folder] -->|拖入| B(WeLauncher/apps/)
+        M[manifest.json] -->|配置| B
+    end
+
+    subgraph CI [GitHub Actions]
+        B -->|Package Subprogram| C(MyApp.zip)
+        C -->|包含| C1[wrapper/WrapperApp.exe]
+        C -->|包含| C2[app/MyApp.exe]
+        
+        M -->|Package Shell| D(WeLauncher.zip)
+        D -->|包含| D1[WeLauncher.exe]
+        D -->|包含| D2[manifest.json]
+    end
+
+    subgraph Deploy [部署]
+        C -->|上传| CDN[文件服务器 / CDN]
+        D -->|分发| User[用户电脑]
+    end
+
+    CDN -.->|下载链接| M
+```
+
+### 2. 用户运行流程 (Runtime)
+
+用户启动 WeLauncher 后，壳会自动处理一切。Wrapper 会拦截非法的直接启动。
+
+```mermaid
+sequenceDiagram
+    actor User as 用户
+    participant Shell as WeLauncher (壳)
+    participant Wrapper as WrapperApp (保护层)
+    participant App as MyApp (子程序)
+
+    User->>Shell: 启动 WeLauncher
+    Shell->>Shell: 读取 manifest.json
+    Shell->>Shell: 检查本地版本 vs 远程版本
+    
+    alt 需要更新/安装
+        Shell->>Shell: 下载 Zip 包
+        Shell->>Shell: 校验 SHA256
+        Shell->>Shell: 解压到 Data/apps/MyApp/
+    end
+
+    User->>Shell: 点击应用图标
+    Shell->>Wrapper: 运行 WrapperApp.exe
+    
+    Note over Wrapper: 安全检查
+    Wrapper->>Shell: 检查 WeLauncher 进程是否存在?
+    
+    alt 壳未运行 (非法启动)
+        Wrapper--xUser: 拒绝运行，退出
+    else 壳正在运行 (合法启动)
+        Wrapper->>App: 启动 app/MyApp.exe
+        activate App
+        App-->>User: 应用界面显示
+        deactivate App
+    end
+```
+
+---
+
+## UI 状态与交互 (UI & Interaction)
+
+WeLauncher 在运行时会展示清晰的状态反馈，确保用户了解当前进度。
+
+### 1. 状态流转
+*   **启动时**: 壳启动后，自动检查 `manifest.json`。
+*   **下载中 (Downloading)**: 如果发现新版本或未安装，卡片进入下载状态，显示进度。
+*   **解压中 (Unzipping)**: 下载完成后，自动解压 Zip 包，显示“正在安装...”。
+*   **就绪 (Ready)**: 安装完毕，显示应用图标，点击即可启动。
+
+### 2. 界面展示 (Grid View)
+*   **布局**: 采用 **Grid 网格布局**。
+*   **卡片样式**: 每个应用展示为一个 **64x64 圆角矩形**。
+
+```mermaid
+graph TD
+    subgraph Grid_UI [WeLauncher 主界面 (Grid Layout)]
+        A[App A<br/>(Ready)]
+        B[App B<br/>(Downloading...)]
+        C[App C<br/>(Unzipping...)]
+        D[App D<br/>(Ready)]
+    end
+    
+    style A fill:#4CAF50,stroke:#333,stroke-width:2px,rx:10,ry:10,color:white
+    style B fill:#FF9800,stroke:#333,stroke-width:2px,rx:10,ry:10,color:white
+    style C fill:#2196F3,stroke:#333,stroke-width:2px,rx:10,ry:10,color:white
+    style D fill:#4CAF50,stroke:#333,stroke-width:2px,rx:10,ry:10,color:white
+```
+
+*   **绿色 (Ready)**: 可直接点击启动。
+*   **橙色 (Downloading)**: 正在下载资源，不可点击。
+*   **蓝色 (Unzipping)**: 正在解压安装，不可点击。
+
+---
+
+## 使用指南
+
+### 第一步：准备子程序
+在项目根目录下，将你的应用文件夹直接拖入 `apps/` 目录中。
+例如：`WeLauncher/apps/Notepad/`。
+
+### 第二步：打包子程序 (Package Subprogram)
+1.  进入 GitHub Actions 页面。
+2.  选择 **Package Subprogram**。
+3.  输入路径：`apps/Notepad`。
+4.  运行 Workflow。
+5.  **结果**：获得 `Notepad.zip`。
+    *   *结构会自动转换为：`wrapper/` (壳) + `app/` (原程序)*。
+
+### 第三步：配置 Manifest
+编辑 `manifests/manifest.json` (或新建)，填入子程序信息：
 
 ```json
 {
   "schemaVersion": 1,
   "apps": [
     {
-      "id": "appA",
-      "name": "示例应用A",
+      "id": "notepad",
+      "name": "简易记事本",
       "version": "1.0.0",
-      "downloadUrl": "https://cdn.example.com/apps/appA/1.0.0/appA-1.0.0.zip",
-      "sha256": "d41d8cd98f00b204e9800998ecf8427e",
-      "wrapperRelativePath": "wrapper/WrapperApp.exe"
-    },
-    {
-      "id": "libX",
-      "name": "依赖库X",
-      "version": "2.0.1",
-      "downloadUrl": "https://cdn.example.com/apps/libX/2.0.1/libX-2.0.1.zip",
-      "sha256": "e2fc714c4727ee9395f324cd2e7f331f",
+      "downloadUrl": "https://your-cdn.com/Notepad.zip",
+      "sha256": "<Zip文件的SHA256>",
       "wrapperRelativePath": "wrapper/WrapperApp.exe"
     }
   ]
 }
 ```
 
-## 使用方法
+### 第四步：打包壳 (Package Shell)
+1.  选择 GitHub Actions -> **Package Shell**。
+2.  输入 `manifest.json` 的内容（或使用默认路径）。
+3.  运行 Workflow。
+4.  **结果**：获得 `WeLauncher.zip`。这是发给用户的最终程序。
 
-### 1. 打包子程序 (Package Subprogram)
+---
 
-只需要将子程序拖入本地文件夹，一个文件夹代表一个子程序。
-**推荐位置**：在项目根目录下创建一个 `apps` 文件夹，将你的子程序文件夹放入其中。例如：`WeLauncher/apps/MyApp/`。
+## 项目结构
 
-使用 GitHub Actions **Package Subprogram**：
-*   **输入**: 子程序所在的文件夹路径 (例如 `apps/MyApp`)。
-*   **输入**: 输出文件名。
-*   **输入**: (可选) 入口程序名称 (例如 `MyApp.exe`)。如果不填，Wrapper 会自动查找文件夹内的 `.exe`。
-*   **输出**: 一个包含 `app/` (原程序) 和 `wrapper/` (保护壳) 的 Zip 包。
+*   `src/WeLauncher`: **壳源码** (WPF)。负责 UI、下载、解压。
+*   `wrappers/MinimalWrapper`: **Wrapper 源码** (Console)。负责安全检查、启动原程序。
+*   `apps/`: **工作区**。存放待打包的子程序。
+*   `tooling/`: **脚本**。PowerShell 打包脚本。
 
-### 2. 打包壳 (Package Shell)
+## 常见问题
 
-使用 GitHub Actions **Package Shell**：
-*   **输入**: `manifest.json` 的内容（或者仓库内的路径）。
-*   **输出**: 包含编译好的 WeLauncher 和 `manifest.json` 的 Zip 包。
-
-### 3. 本地运行
-
-1.  下载 **Shell Zip** 并解压。
-2.  确保 `manifest.json` 配置正确（指向你的子程序下载地址）。
-3.  运行 `WeLauncher.exe`。
-4.  点击应用，Launcher 会自动下载、解压并运行。
-
-## 目录结构
-
-*   `src/WeLauncher`: WPF 壳源码。
-*   `wrappers/MinimalWrapper`: 极简 Wrapper 源码。
-*   `tooling/`: 打包脚本 (`package-subprogram.ps1`, `package-shell.ps1`)。
-*   `.github/workflows/`: 自动化工作流。
-
-## 开发与构建
-
-*   **Wrapper**:
-    *   逻辑：检查 `WeLauncher` 进程 -> 查找 `meta/app.json` 或 `app/*.exe` -> 启动。
-*   **Shell**:
-    *   逻辑：读取 `manifest.json` -> 下载 Zip -> 解压 -> 运行 `wrapper/WrapperApp.exe`。
-
-无需复杂的 Token 验证或启动参数配置，一切保持简单有效。
+*   **Q: 为什么要用 Wrapper?**
+    *   A: 防止用户直接去文件夹里双击 `app/MyApp.exe` 启动。Wrapper 会检查 `WeLauncher` 是否在运行，如果不在运行（比如用户没开壳），子程序就无法启动。
+*   **Q: 为什么要把原程序放在 `app/` 目录下?**
+    *   A: 保持根目录干净，且方便 Wrapper 统一查找入口文件。

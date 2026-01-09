@@ -1,25 +1,100 @@
 <Window x:Class="WeLauncher.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:WeLauncher.Models"
         Title="WeLauncher" Height="600" Width="900">
-    <Grid>
+    <Grid Margin="20">
         <ItemsControl ItemsSource="{Binding Apps}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <UniformGrid Columns="4"/>
+                    <WrapPanel />
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Border Margin="8" Padding="10" BorderBrush="Gray" BorderThickness="1">
-                        <StackPanel>
-                            <TextBlock Text="{Binding Name}" FontSize="16"/>
-                            <TextBlock Text="{Binding Version}" Margin="0,4,0,0"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                <Button Content="安装" Command="{Binding DataContext.InstallCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
-                                <Button Content="启动" Margin="8,0,0,0" Command="{Binding DataContext.LaunchCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                    <Border Width="64" Height="64" CornerRadius="8" Margin="10" Cursor="Hand">
+                        <Border.InputBindings>
+                            <MouseBinding Gesture="LeftClick" 
+                                          Command="{Binding DataContext.AppClickCommand, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                          CommandParameter="{Binding}"/>
+                        </Border.InputBindings>
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#EEEEEE"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding State}" Value="Downloading">
+                                        <Setter Property="Background" Value="#FFF176"/> <!-- Yellow/Orange -->
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding State}" Value="Unzipping">
+                                        <Setter Property="Background" Value="#64B5F6"/> <!-- Blue -->
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding State}" Value="Ready">
+                                        <Setter Property="Background" Value="#81C784"/> <!-- Green -->
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding State}" Value="Failed">
+                                        <Setter Property="Background" Value="#E57373"/> <!-- Red -->
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        
+                        <Grid>
+                            <!-- Default / Ready Content -->
+                            <TextBlock Text="{Binding Name}" 
+                                       TextWrapping="Wrap" 
+                                       TextAlignment="Center" 
+                                       VerticalAlignment="Center" 
+                                       HorizontalAlignment="Center"
+                                       FontSize="10"
+                                       Padding="2">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding State}" Value="Downloading">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding State}" Value="Unzipping">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <!-- Downloading Content -->
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding State}" Value="Downloading">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="下载中" FontSize="9" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding Progress, StringFormat={}{0:0}%}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"/>
                             </StackPanel>
-                        </StackPanel>
+
+                            <!-- Unzipping Content -->
+                            <TextBlock Text="解压中..." 
+                                       FontSize="10" 
+                                       VerticalAlignment="Center" 
+                                       HorizontalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding State}" Value="Unzipping">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
                     </Border>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>

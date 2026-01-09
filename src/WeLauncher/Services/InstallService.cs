@@ -24,13 +24,31 @@ namespace WeLauncher.Services
             return Path.Combine(GetBaseDir(), "cache", "downloads", $"{app.Id}-{app.Version}.zip");
         }
 
-        public async Task InstallAsync(AppDescriptor app)
+        public bool IsInstalled(AppDescriptor app)
+        {
+            var destDir = GetAppVersionDir(app);
+            // Simple check: directory exists and wrapper exists
+            return Directory.Exists(destDir) && File.Exists(Path.Combine(destDir, app.WrapperRelativePath));
+        }
+
+        public async Task DownloadAppAsync(AppDescriptor app, System.IProgress<double>? progress = null)
         {
             Directory.CreateDirectory(Path.Combine(GetBaseDir(), "cache", "downloads"));
             var zipPath = GetCacheZipPath(app);
-            await _download.DownloadZipAsync(app.DownloadUrl, zipPath, app.Sha256);
+            await _download.DownloadZipAsync(app.DownloadUrl, zipPath, app.Sha256, progress);
+        }
+
+        public void ExtractApp(AppDescriptor app)
+        {
+            var zipPath = GetCacheZipPath(app);
             var destDir = GetAppVersionDir(app);
             _zip.ExtractZip(zipPath, destDir);
+        }
+
+        public async Task InstallAsync(AppDescriptor app, System.IProgress<double>? progress = null)
+        {
+            await DownloadAppAsync(app, progress);
+            ExtractApp(app);
         }
     }
 }
