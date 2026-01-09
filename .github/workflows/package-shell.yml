@@ -24,17 +24,19 @@ jobs:
 
     - name: Package
       shell: pwsh
+      env:
+        MANIFEST_JSON: ${{ inputs.manifest_json }}
+        MANIFEST_PATH: ${{ inputs.manifest_path }}
+        WORKSPACE: ${{ github.workspace }}
       run: |
         $params = @{
-            OutputPath = "${{ github.workspace }}\WeLauncher.zip"
+            OutputPath = "$env:WORKSPACE\WeLauncher.zip"
         }
-        $manifestJson = @'
-${{ inputs.manifest_json }}
-'@
-        if ($manifestJson.Trim() -ne "") {
-            $params['ManifestJson'] = $manifestJson
-        } elseif ("${{ inputs.manifest_path }}" -ne "") {
-            $params['ManifestPath'] = "${{ github.workspace }}\${{ inputs.manifest_path }}"
+        
+        if (-not [string]::IsNullOrWhiteSpace($env:MANIFEST_JSON)) {
+            $params['ManifestJson'] = $env:MANIFEST_JSON
+        } elseif (-not [string]::IsNullOrWhiteSpace($env:MANIFEST_PATH)) {
+            $params['ManifestPath'] = Join-Path $env:WORKSPACE $env:MANIFEST_PATH
         }
 
         ./tooling/package-shell.ps1 @params
