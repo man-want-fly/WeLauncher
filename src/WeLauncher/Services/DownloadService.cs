@@ -33,7 +33,7 @@ namespace WeLauncher.Services
                 }
             }
             sha.TransformFinalBlock(System.Array.Empty<byte>(), 0, 0);
-            var hash = System.Convert.ToHexString(sha.Hash).ToLowerInvariant();
+            var hash = System.Convert.ToHexString(sha.Hash!).ToLowerInvariant();
             if (!string.IsNullOrEmpty(expectedSha256) && hash != expectedSha256.ToLowerInvariant()) throw new IOException("Hash mismatch");
             return destPath;
         }

@@ -21,7 +21,13 @@ namespace WeLauncher.ViewModels
 
         public MainViewModel()
         {
-            AppClickCommand = new RelayCommand(async o => await OnAppClickAsync((AppDescriptor)o));
+            AppClickCommand = new RelayCommand(async o => 
+            {
+                if (o is AppDescriptor app)
+                {
+                    await OnAppClickAsync(app);
+                }
+            });
             _ = LoadManifestAsync();
         }
 

@@ -7,7 +7,7 @@ namespace WeLauncher.Services
 {
     public class LaunchService
     {
-        public Process StartWrapper(string wrapperExe, string appDir)
+        public Process? StartWrapper(string wrapperExe, string appDir)
         {
             var psi = new ProcessStartInfo(wrapperExe);
             // Pass appDir so the wrapper knows where the app root is
